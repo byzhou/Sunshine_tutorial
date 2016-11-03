@@ -1,10 +1,14 @@
 package com.example.sunshine;
 
 import android.app.Fragment;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -18,6 +22,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 
+import static com.example.sunshine.R.styleable.MenuItem;
+
 /**
  * Created by bobzhou on 11/1/16.
  */
@@ -27,6 +33,30 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
 
     public ForecastFragment() {
 
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.forecastfragment, menu);
+    }
+
+    public fetchWeather myFetchWeather;
+
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_refresh) {
+            myFetchWeather = new fetchWeather();
+            myFetchWeather.execute("94043,us");
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -66,6 +96,8 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
         BufferedReader reader;
         String forecastJsonStr;
 
+        private final String LOG_TAG = fetchWeather.class.getSimpleName();
+
         @Override
         protected String doInBackground(String... urls) {
 
@@ -75,7 +107,22 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
                 // Possible parameters are avaiable at OWM's forecast API page, at
                 // http://openweathermap.org/API#forecast
                 Log.d("start network", "This is in the try");
-                URL url = new URL("http://api.openweathermap.org/data/2.5/forecast/weather?zip=94040,us&units=metric&cnt=7&mode=json&APPID=3164401a3f292605d908b8371fb5105c");
+
+                Uri.Builder builder = new Uri.Builder();
+                builder.scheme("http")
+                        .authority("api.openweathermap.org")
+                        .appendPath("data")
+                        .appendPath("2.5")
+                        .appendPath("forecast")
+                        .appendPath("weather")
+                        .appendQueryParameter("zip", urls[0])
+                        .appendQueryParameter("units", "metric")
+                        .appendQueryParameter("cnt", "7")
+                        .appendQueryParameter("mode", "json")
+                        .appendQueryParameter("APPID", "3164401a3f292605d908b8371fb5105c");
+                String url_string = builder.build().toString();
+                URL url = new URL(url_string);
+                //URL url = new URL("http://api.openweathermap.org/data/2.5/forecast/weather?zip=94040,us&units=metric&cnt=7&mode=json&APPID=3164401a3f292605d908b8371fb5105c");
 
                 // Create the request to OpenWeatherMap, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
@@ -110,6 +157,8 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
                     return null;
                 }
                 forecastJsonStr = buffer.toString();
+
+                Log.v("returnString", forecastJsonStr);
             } catch (IOException e) {
                 Log.e("PlaceholderFragment", "Error ", e);
                 // If the code didn't successfully get the weather data, there's no point in attemping

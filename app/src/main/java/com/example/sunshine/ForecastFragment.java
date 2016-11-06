@@ -1,16 +1,19 @@
 package com.example.sunshine;
 
 import android.app.Fragment;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
@@ -29,6 +32,8 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 
 import android.text.format.Time;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import static com.example.sunshine.R.styleable.MenuItem;
 
@@ -64,19 +69,7 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
         if (id == R.id.action_refresh) {
             myFetchWeather = new fetchWeather();
             myFetchWeather.execute("94043,us");
-            try {
-                String[] returnWeatherStringArray = myFetchWeather.get();
 
-                mForecastAdapter = new ArrayAdapter<>(
-                        getActivity(),
-                        R.layout.list_item_forecast,
-                        R.id.listview_forecast,
-                        returnWeatherStringArray
-                );
-
-            } catch (Exception e) {
-
-            }
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -102,11 +95,17 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
         listView.setAdapter(mForecastAdapter);
         // These two need to be declared outside the try/catch
         // so that they can be closed in the finally block.
-        HttpURLConnection urlConnection = null;
-        BufferedReader reader = null;
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                String forecast = mForecastAdapter.getItem(position);
+                Toast.makeText(getActivity(), forecast, Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(getActivity(), DetailedActivity.class);
+                startActivity(intent);
 
-        // Will contain the raw JSON response as a string.
-        String forecastJsonStr = null;
+            }
+        });
+
 
         Log.d("start network", "This is even before try");
 
@@ -215,6 +214,12 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
         // onPostExecute displays the results of the AsyncTask.
         @Override
         protected void onPostExecute(String[] result) {
+            if (result != null) {
+                mForecastAdapter.clear();
+                for (String weatherDataString : result) {
+                    mForecastAdapter.add(weatherDataString);
+                }
+            }
 
 
         }

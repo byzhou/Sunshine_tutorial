@@ -7,6 +7,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
 
+import static com.example.sunshine.R.layout.fragment_detailed;
+
 public class DetailedActivity extends AppCompatActivity {
 
     @Override
@@ -25,6 +27,11 @@ public class DetailedActivity extends AppCompatActivity {
             }
         });
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        if (savedInstanceState == null) {
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.activity_detailed, new DetailedActivityFragment())
+                    .commit();
+        }
     }
 
 }

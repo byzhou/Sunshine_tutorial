@@ -2,9 +2,11 @@ package com.example.sunshine;
 
 import android.app.Fragment;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -50,6 +52,7 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
 
     }
 
+    public fetchWeather myFetchWeather;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,33 +65,47 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
         inflater.inflate(R.menu.forecastfragment, menu);
     }
 
-    public fetchWeather myFetchWeather;
+    public void updateWeather() {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getContext());
+        String zipcode = sharedPref.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        String unit = sharedPref.getString(getString(R.string.pref_units), getString(R.string.pref_units_default));
+        myFetchWeather = new fetchWeather();
+        myFetchWeather.execute(zipcode + ",us", unit);
+    }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        updateWeather();
+    }
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_refresh) {
-            myFetchWeather = new fetchWeather();
-            myFetchWeather.execute("94043,us");
+            updateWeather();
 
             return true;
+        } else if (id == R.id.main_action_settings) {
+            Intent intent = new Intent(getActivity(), SettingsActivity.class);
+            startActivity(intent);
         }
+
         return super.onOptionsItemSelected(item);
     }
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-        ArrayList<String> weatherItems = new ArrayList<>(5);
-        weatherItems.add("Today - Sunny - 88/63");
-        weatherItems.add("Tomorrow - Foggy -89/23");
-        weatherItems.add("Wednesday - Rainy");
-        weatherItems.add("Thursday - Rainy");
-        weatherItems.add("Friday - Rainy");
+//        ArrayList<String> weatherItems = new ArrayList<>(5);
+//        weatherItems.add("Today - Sunny - 88/63");
+//        weatherItems.add("Tomorrow - Foggy -89/23");
+//        weatherItems.add("Wednesday - Rainy");
+//        weatherItems.add("Thursday - Rainy");
+//        weatherItems.add("Friday - Rainy");
 
         mForecastAdapter = new ArrayAdapter<>(
                 getActivity(),
                 R.layout.list_item_forecast,
                 R.id.listview_forecast,
-                weatherItems
+                new ArrayList<String>()
         );
 
         ListView listView = (ListView) rootView.findViewById(R.id.list_view_forecast);
@@ -101,6 +118,7 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
                 String forecast = mForecastAdapter.getItem(position);
                 Toast.makeText(getActivity(), forecast, Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(getActivity(), DetailedActivity.class);
+                intent.putExtra(Intent.EXTRA_TEXT, forecast);
                 startActivity(intent);
 
             }
@@ -128,7 +146,6 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
                 // Construct the URL for the OpenWeatherMap query
                 // Possible parameters are avaiable at OWM's forecast API page, at
                 // http://openweathermap.org/API#forecast
-                Log.d("start network", "This is in the try");
 
                 Uri.Builder builder = new Uri.Builder();
                 builder.scheme("http")
@@ -138,7 +155,7 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
                         .appendPath("forecast")
                         .appendPath("weather")
                         .appendQueryParameter("zip", urls[0])
-                        .appendQueryParameter("units", "metric")
+                        .appendQueryParameter("units", urls[1])
                         .appendQueryParameter("cnt", "7")
                         .appendQueryParameter("mode", "json")
                         .appendQueryParameter("APPID", "3164401a3f292605d908b8371fb5105c");
@@ -150,8 +167,8 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
                 urlConnection = (HttpURLConnection) url.openConnection();
                 urlConnection.setRequestMethod("GET");
                 urlConnection.connect();
+                Log.v("URL", url_string);
 
-                Log.d("Connection", "url connected");
 
                 // Read the input stream into a String
                 InputStream inputStream = urlConnection.getInputStream();
@@ -171,7 +188,6 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
                     buffer.append(line + "\n");
                 }
 
-                Log.d("reading json", "all the data has been read");
 
                 if (buffer.length() == 0) {
                     // Stream was empty.  No point in parsing.
@@ -280,13 +296,11 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
         // Since this data is also sent in-order and the first day is always the
         // current day, we're going to take advantage of that to get a nice
         // normalized UTC date for all of our weather.
-        Log.v("json", "json file has been successfully created");
         Time dayTime = new Time();
         dayTime.setToNow();
 
         // we start at the day returned by local time. Otherwise this is a mess.
         int julianStartDay = Time.getJulianDay(System.currentTimeMillis(), dayTime.gmtoff);
-        Log.v("julianStartDay", "julianStratDay" + String.valueOf(julianStartDay));
         // now we work exclusively in UTC
         dayTime = new Time();
 
@@ -298,7 +312,6 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
 
             // Get the JSON object representing the day
             JSONObject dayForecast = weatherArray.getJSONObject(i);
-            Log.v("jsonInLoop", "create a json file in a loop");
 
             // The date/time is returned as a long.  We need to convert that
             // into something human-readable, since most people won't read "1400356800" as
@@ -311,21 +324,16 @@ public class ForecastFragment extends android.support.v4.app.Fragment {
             // description is in a child array called "weather", which is 1 element long.
             JSONObject weatherObject = dayForecast.getJSONArray(OWM_WEATHER).getJSONObject(0);
             description = weatherObject.getString(OWM_DESCRIPTION);
-            Log.v("jsonInLoop", "create a json file in a loop2");
-            Log.d("description", description);
 
             // Temperatures are in a child object called "temp".  Try not to name variables
             // "temp" when working with temperature.  It confuses everybody.
             //JSONObject temperatureObject = dayForecast.getJSONObject(1);
-            Log.v("jsonArray", "create a json array in a loop3");
             double high = dayForecast.getJSONObject("main").getDouble("temp_max");
             double low = dayForecast.getJSONObject("main").getDouble("temp_min");
 
-            Log.v("jsonInLoop", "create a json file in a loop4");
 
             highAndLow = formatHighLows(high, low);
             resultStrs[i] = day + " - " + description + " - " + highAndLow;
-            Log.v("resultStrings", resultStrs[i]);
         }
 
         for (String s : resultStrs) {

@@ -11,5 +11,13 @@
     tools:context="com.example.sunshine.DetailedActivityFragment"
     tools:showIn="@layout/activity_detailed">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/detailed_text"
+        android:gravity="center_vertical|left"
+        android:textSize="20dp"
+        android:text="Hello world!" />
+
 
 </RelativeLayout>
